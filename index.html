@@ -2,26 +2,143 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>TV Simulator Generator</title>
-<link rel="stylesheet" href="style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TV Simulator Preset Generator</title>
+<style>
+:root { color-scheme: light; --border:#c9c9c9; --panel:#f5f5f5; --text:#171717; }
+* { box-sizing:border-box; }
+body { margin:0; padding:24px 16px; font:14px/1.4 Arial,Helvetica,sans-serif; color:var(--text); background:#fff; }
+main { max-width:760px; margin:0 auto; }
+header { display:flex; align-items:baseline; justify-content:space-between; gap:12px; border-bottom:1px solid #bbb; padding-bottom:10px; margin-bottom:18px; }
+h1 { font-size:24px; font-weight:600; margin:0; }
+a, button { color:inherit; }
+button { cursor:pointer; }
+.topbutton { background:#f7f7f7; border:1px solid var(--border); padding:5px 10px; border-radius:3px; }
+.about { display:none; background:#f8f8f8; border:1px solid var(--border); padding:10px 12px; margin:0 0 16px; }
+.about.show { display:block; }
+.field { display:grid; grid-template-columns:110px 1fr; align-items:center; gap:12px; margin:14px 0 20px; }
+input[type=text], input[type=number] { border:1px solid #aaa; border-radius:2px; padding:6px 7px; font:inherit; min-width:0; }
+.rows { border:1px solid var(--border); }
+.control-row { display:grid; grid-template-columns:minmax(140px, 1fr) minmax(120px, 2fr) 92px; gap:12px; align-items:center; padding:9px 12px; border-bottom:1px solid #ddd; }
+.control-row:last-child { border-bottom:0; }
+input[type=range] { width:100%; accent-color:#555; cursor:pointer; }
+input[type=number] { width:100%; }
+.preview-wrap { margin-top:18px; }
+h2 { font-size:15px; font-weight:600; margin:0 0 8px; }
+.preview { height:210px; overflow:hidden; position:relative; border:1px solid #444; background:#101010; display:grid; place-items:center; }
+.screen { position:absolute; inset:0; background:
+ repeating-linear-gradient(0deg,rgba(255,255,255,.10) 0px,rgba(255,255,255,.10) 1px,transparent 1px,transparent 4px),
+ repeating-linear-gradient(90deg,rgba(40,255,170,.06) 0px,rgba(40,255,170,.06) 1px,transparent 1px,transparent 5px),
+ radial-gradient(ellipse at center,#4b4b4b 0%,#171717 68%,#050505 100%); }
+.screen::after { content:""; position:absolute; inset:0; background:repeating-linear-gradient(0deg,transparent 0px,transparent 3px,rgba(0,0,0,.55) 4px); opacity:var(--scan,.35); }
+.preview-label { z-index:1; color:#e7ffe9; text-align:center; text-shadow:0 0 8px #4cff78; font-size:clamp(24px,5vw,42px); letter-spacing:var(--spacing,2px); transform:scale(var(--zoom,1)); filter:blur(var(--blur,0px)); }
+.preview-note { color:#666; font-size:12px; margin-top:6px; }
+.actions { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+.actions button { border:1px solid #aaa; background:#f5f5f5; border-radius:3px; padding:7px 11px; }
+.actions button.primary { background:#222; color:white; border-color:#222; }
+#importStatus { font-size:12px; color:#444; margin-top:7px; }
+.small { font-size:12px; color:#555; }
+@media(max-width:520px) {
+ body { padding:16px 10px; }
+ .control-row { grid-template-columns:1fr 1.2fr 76px; gap:8px; padding:9px 8px; font-size:13px; }
+ .field { grid-template-columns:1fr; gap:5px; }
+}
+</style>
 </head>
 <body>
-
-<main class="app">
- 
- <div class="toolbar"><strong>TV Simulator</strong><button type="button" class="about-button" id="aboutBtn" aria-expanded="false" aria-controls="about-info">About&nbsp; ?</button></div>
- <section class="content">
-  <div class="presetrow"><label for="presetName">Preset name:</label><input id="presetName" type="text" value="My TV Simulator Preset" maxlength="80"></div>
-  <div id="controls"></div>
-  <div class="separator"></div>
-  <div class="buttons"><button type="button" id="tvLook">TV Look</button><button type="button" id="badSync">Bad Sync</button><button type="button" id="reset">Default</button><button type="button" id="importReg">Load VEGAS .reg</button><input id="regFile" type="file" accept=".reg,text/plain" hidden><button type="button" class="download" id="download">Export .reg…</button></div>
-  <p class="note">Adjust the sliders or type values directly into the boxes.</p>
-  <p class="note range-note">You can type values outside of the normal UI ranges as well!</p>
-  <p class="status" id="status">Load a genuine VEGAS Pro 18 registry export. Export preserves its binary data; slider edits are not applied to the binary preset.</p>
-  <section id="about-info" hidden><h2>About TV Simulator Preset Builder</h2><p>Use this page to experiment with TV Simulator effect values and save a named settings summary.</p><p><strong>How to use:</strong> Drag a slider or type a number into its value box. Choose <em>TV Look</em> or <em>Bad Sync</em> to load an example, or choose <em>Default</em> to restore the starting values.</p><p><strong>Import/export:</strong> Load a genuine registry export from VEGAS Pro 18. The exporter preserves the original binary data and can duplicate it under a new preset name. The sliders are a settings scratchpad and are not mapped to the binary payload, so changing them does not change the effect values inside VEGAS.</p><button type="button" id="closeAbout">Close</button></section>
- </section>
+<main>
+<header><h1>TV Simulator</h1><button class="topbutton" id="aboutButton" type="button">About ?</button></header>
+<div class="about" id="aboutPanel">
+  Adjust the sliders or type a number to change the live preview. These controls currently affect this page's preview only. To export a valid VEGAS Pro preset, load a real TV Simulator <code>.reg</code> file and download it unchanged; this page does not rewrite the plugin's binary preset data.
+</div>
+<label class="field"><span>Preset name:</span><input id="presetName" type="text" value="TV Simulator Preset"></label>
+<div class="rows" id="controls">
+  <div class="control-row"><label for="detailZoom">Detail zoom</label><input id="detailZoom" type="range" min="0" max="100" value="50" step="1"><input id="detailZoomNum" type="number" min="0" max="100" value="50" step="1" aria-label="Detail zoom value"></div>
+  <div class="control-row"><label for="apertureGrill">Aperture grill</label><input id="apertureGrill" type="range" min="0" max="100" value="35" step="1"><input id="apertureGrillNum" type="number" min="0" max="100" value="35" step="1" aria-label="Aperture grill value"></div>
+  <div class="control-row"><label for="interlacing">Interlacing</label><input id="interlacing" type="range" min="0" max="100" value="40" step="1"><input id="interlacingNum" type="number" min="0" max="100" value="40" step="1" aria-label="Interlacing value"></div>
+  <div class="control-row"><label for="lineSync">Line sync</label><input id="lineSync" type="range" min="0" max="100" value="20" step="1"><input id="lineSyncNum" type="number" min="0" max="100" value="20" step="1" aria-label="Line sync value"></div>
+  <div class="control-row"><label for="verticalSync">Vertical sync</label><input id="verticalSync" type="range" min="0" max="100" value="15" step="1"><input id="verticalSyncNum" type="number" min="0" max="100" value="15" step="1" aria-label="Vertical sync value"></div>
+  <div class="control-row"><label for="scanPhasing">Scan phasing</label><input id="scanPhasing" type="range" min="0" max="100" value="25" step="1"><input id="scanPhasingNum" type="number" min="0" max="100" value="25" step="1" aria-label="Scan phasing value"></div>
+  <div class="control-row"><label for="phosphorescence">Phosphorescence</label><input id="phosphorescence" type="range" min="0" max="100" value="60" step="1"><input id="phosphorescenceNum" type="number" min="0" max="100" value="60" step="1" aria-label="Phosphorescence value"></div>
+  <div class="control-row"><label for="staticNoise">Static</label><input id="staticNoise" type="range" min="0" max="100" value="10" step="1"><input id="staticNoiseNum" type="number" min="0" max="100" value="10" step="1" aria-label="Static value"></div>
+</div>
+<section class="preview-wrap">
+  <h2>Live preview</h2>
+  <div class="preview" id="preview"><div class="screen" id="screen"></div><div class="preview-label" id="previewLabel">TV SIMULATOR</div></div>
+  <div class="preview-note">Preview effect only — it is not an exact render of the VEGAS Pro plugin.</div>
+</section>
+<div class="actions">
+  <button type="button" id="tvLook">TV Look</button>
+  <button type="button" id="badSync">Bad Sync</button>
+  <button type="button" id="reset">Reset</button>
+  <button type="button" class="primary" id="download">Download .reg</button>
+</div>
+<label class="small" for="regFile">Load an existing TV Simulator .reg file to download a copy of the real preset:</label><br>
+<input id="regFile" type="file" accept=".reg, text/plain">
+<div id="importStatus">No .reg file loaded.</div>
+<script>
+const ids = ['detailZoom','apertureGrill','interlacing','lineSync','verticalSync','scanPhasing','phosphorescence','staticNoise'];
+const defaults = [50,35,40,20,15,25,60,10];
+const $ = id => document.getElementById(id);
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+function syncFrom(sourceId, value) {
+  const base = sourceId.endsWith('Num') ? sourceId.slice(0,-3) : sourceId;
+  const slider = $(base), number = $(base+'Num');
+  const min = Number(slider.min), max = Number(slider.max);
+  let n = Number(value);
+  if (!Number.isFinite(n)) n = Number(slider.value);
+  n = clamp(Math.round(n), min, max);
+  slider.value = n; number.value = n;
+  updatePreview();
+}
+ids.forEach(id => {
+  $(id).addEventListener('input', e => syncFrom(id,e.target.value));
+  $(id+'Num').addEventListener('input', e => { if(e.target.value !== '') syncFrom(id+'Num',e.target.value); });
+  $(id+'Num').addEventListener('change', e => syncFrom(id+'Num',e.target.value));
+});
+function val(id){return Number($(id).value)||0;}
+function updatePreview(){
+  const zoom = 0.75 + val('detailZoom')/200;
+  const grill = val('apertureGrill')/100;
+  const interlace = val('interlacing')/100;
+  const sync = val('lineSync')/100;
+  const vertical = val('verticalSync')/100;
+  const phasing = val('scanPhasing')/100;
+  const glow = val('phosphorescence')/100;
+  const noise = val('staticNoise')/100;
+  $('previewLabel').style.setProperty('--zoom',zoom);
+  $('previewLabel').style.setProperty('--spacing',(1+phasing*5)+'px');
+  $('previewLabel').style.filter = `blur(${sync*1.5}px)`;
+  $('screen').style.setProperty('--scan',String(interlace));
+  $('screen').style.backgroundSize = `100% ${Math.max(2,8-interlace*5)}px, ${Math.max(2,10-grill*7)}px 100%, 100% 100%`;
+  $('screen').style.filter = `brightness(${0.7+glow*.7}) contrast(${1+vertical*.7})`;
+  $('screen').style.opacity = String(1-noise*.28);
+  $('preview').style.transform = `translateX(${Math.sin(phasing*12)*sync*3}px)`;
+  $('previewLabel').style.textShadow = `0 0 ${3+glow*16}px rgba(95,255,130,${.25+glow*.75})`;
+  $('preview').style.backgroundColor = '#101010';
+  $('previewLabel').textContent = ($('presetName').value.trim() || 'TV SIMULATOR').toUpperCase();
+}
+$('presetName').addEventListener('input',updatePreview);
+$('aboutButton').addEventListener('click',()=>$('aboutPanel').classList.toggle('show'));
+function setValues(values){ ids.forEach((id,i)=>syncFrom(id,values[i])); }
+$('tvLook').addEventListener('click',()=>setValues([65,55,55,15,15,20,80,5]));
+$('badSync').addEventListener('click',()=>setValues([35,70,80,85,75,80,35,65]));
+$('reset').addEventListener('click',()=>{setValues(defaults);$('presetName').value='TV Simulator Preset';updatePreview();});
+let loadedFile=null;
+$('regFile').addEventListener('change',e=>{
+  loadedFile=e.target.files && e.target.files[0] ? e.target.files[0] : null;
+  $('importStatus').textContent=loadedFile ? `Loaded: ${loadedFile.name}. Download will save this file unchanged.` : 'No .reg file loaded.';
+});
+$('download').addEventListener('click',()=>{
+  if(!loadedFile){ alert('To export a real VEGAS preset, load an existing TV Simulator .reg file first. The sliders change the live preview only.'); return; }
+  const url=URL.createObjectURL(loadedFile);
+  const a=document.createElement('a'); a.href=url;
+  const safe=($('presetName').value.trim() || 'TV Simulator Preset').replace(/[\\/:*?"<>|]/g,'_');
+  a.download=safe+'.reg'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+updatePreview();
+</script>
 </main>
-<script src="script.js" defer></script>
 </body>
 </html>
