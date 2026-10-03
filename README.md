@@ -58,3 +58,8 @@ The JSON export saves the generator's parameter values for reference or reuse in
 ## Disclaimer
 
 This is an independent utility and is not affiliated with or endorsed by MAGIX or VEGAS Pro. Product names are used only to describe compatibility goals.
+
+
+## VEGAS registry preset import/export
+
+Use **Load VEGAS .reg** to load a genuine registry export containing a `DXTransform\Presets` binary value. Export preserves that original binary payload and changes the preset value name only. The eight sliders are not decoded into the binary structure, so slider changes do not modify the effect settings in the exported registry data. Back up your registry before importing any `.reg` file. Test in VEGAS Pro 18 before relying on compatibility.
